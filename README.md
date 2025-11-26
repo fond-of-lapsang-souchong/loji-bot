@@ -15,6 +15,7 @@ pip install -r requirements.txt
 ```fish
 python navlun.py       # Anlık durum ve analiz
 python navlun.py log   # Geçmiş kayıtları görüntüle
+python navlun.py grafik # Log kayıtlarına göre verilerin asciichartpy ile grafiğinin yapılması
 ```
 
 
