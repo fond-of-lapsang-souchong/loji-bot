@@ -8,7 +8,6 @@ from rich.panel import Panel
 from rich import box
 import asciichartpy
 import pandas as pd
-import feedparser
 import csv
 import os
 import sys
@@ -19,9 +18,9 @@ from datetime import datetime
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 """
-PROJE: Lojistik İstihbarat Botu (v7.0 - The Informant)
-YENİLİK: RSS Haber Modülü. Lojistik dünyasındaki gelişmeleri (gCaptain) çeker.
-         Kritik kelimeleri (Grev, Savaş, Kaza) tespit edip kırmızı ile vurgular.
+PROJE: Lojistik İstihbarat Botu (v7.2 - Core Logic)
+AÇIKLAMA: Sadece finansal veri, risk analizi, loglama ve grafik çizimi yapar.
+          Haber modülü 'nhaber.py' dosyasına taşınmıştır.
 """
 
 FILE_NAME = "lojistik_log.csv"
@@ -62,7 +61,7 @@ def show_history():
         if df.empty:
             console.print("[dim]Dosya boş.[/dim]")
             return
-        table = Table(title="📜 Lojistik Kayıt Defteri", box=box.SIMPLE_HEAD)
+        table = Table(title="📜 Lojistik Kayıt Defteri (En Yeni En Üstte)", box=box.SIMPLE_HEAD)
         for col in df.columns: table.add_column(col, style="cyan")
         for index, row in df.tail(10).iloc[::-1].iterrows():
             row_list = [str(x) for x in row.tolist()]
@@ -119,63 +118,6 @@ def generate_range_bar(data_list, width=10):
         return bar
     except: return "[dim]ERR[/dim]"
 
-# --- HABER MODÜLÜ ---
-def fetch_logistics_news():
-    console = Console()
-    rss_url = "https://gcaptain.com/feed/" 
-    
-    try:
-        feed = feedparser.parse(rss_url)
-        news_items = []
-        
-        # 1. RİSK KELİMELERİ (KIRMIZI - Olay Odaklı)
-        risk_keywords = ["strike", "attack", "war", "sink", "fire", "collision", "pirate", "houthi", "delay", "crash", "sanction", "ban"]
-        
-        # 2. YÜK & EMTİA KELİMELERİ (SARI - Para Odaklı)
-        cargo_keywords = ["soybean", "grain", "wheat", "corn", "iron ore", "coal", "lng", "crude", "oil", "bunker", "container", "export", "import"]
-
-        # 3. POZİTİF KELİMELER (YEŞİL - Şirket Odaklı)
-        good_keywords = ["profit", "record", "growth", "deal", "new route", "upgrade", "dividend"]
-
-        count = 0
-        for entry in feed.entries:
-            if count >= 5: break 
-            
-            title = entry.title
-            published = entry.published_parsed
-            date_str = f"{published.tm_mday}/{published.tm_mon}" if published else ""
-
-            title_lower = title.lower()
-            
-            # --- RENK MANTIĞI ---
-            if any(word in title_lower for word in risk_keywords):
-                # Tehlike varsa KIRMIZI
-                formatted_title = f"[bold red]⚠ {title}[/bold red]"
-            
-            elif any(word in title_lower for word in cargo_keywords):
-                # Yük/Emtia hareketi varsa SARI (Ticari Fırsat)
-                formatted_title = f"[bold yellow]💰 {title}[/bold yellow]"
-                
-            elif any(word in title_lower for word in good_keywords):
-                # Şirket haberi varsa YEŞİL
-                formatted_title = f"[bold green]✔ {title}[/bold green]"
-            else:
-                # Nötr haber
-                formatted_title = f"[dim]{title}[/dim]"
-            # ----------------------------------
-
-            news_items.append(f"[cyan]{date_str}[/cyan] | {formatted_title}")
-            count += 1
-            
-        if news_items:
-            console.print(Panel("\n".join(news_items), title="📰 DENİZCİLİK & LOJİSTİK İSTİHBARATI", border_style="blue"))
-        else:
-            console.print("[dim]Haber akışı boş.[/dim]")
-
-    except Exception as e:
-        logging.error(f"Haber Modülü Hatası: {e}")
-        console.print(f"[dim red]Haberler çekilemedi: {e}[/dim red]")
-
 def analyze_risks(data):
     console = Console()
     alerts = []
@@ -201,10 +143,12 @@ def analyze_risks(data):
 
     if alerts:
         console.print(Panel("\n".join(alerts), title="🧠 YAPAY ZEKA ANALİZİ", border_style="red", expand=False))
+    else:
+        console.print("\n[dim green]✔ Piyasa analiz edildi: Stabil.[/dim green]")
 
 def get_logistics_dashboard():
     console = Console()
-    console.print("\n[bold cyan]📡 KÜRESEL LOJİSTİK İSTİHBARAT AĞI v7.0 (The Informant)[/bold cyan]")
+    console.print("\n[bold cyan]📡 KÜRESEL LOJİSTİK İSTİHBARAT AĞI v7.2 (Core)[/bold cyan]")
     
     tickers_info = {"BDRY": "Kuru Yük", "ZIM": "Konteyner", "AMKBY": "Maersk", "FDX": "FedEx", "CL=F": "Petrol"}
     
@@ -212,9 +156,6 @@ def get_logistics_dashboard():
         data = yf.download(list(tickers_info.keys()), period="14d", progress=False, auto_adjust=False)
         if data.empty: raise ValueError("Veri yok.")
         
-        fetch_logistics_news()
-        print("")
-
         table = Table(box=box.SIMPLE, header_style="bold white on blue")
         table.add_column("Enstrüman", style="cyan bold")
         table.add_column("Fiyat", justify="right")
